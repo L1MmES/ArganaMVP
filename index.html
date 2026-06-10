@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8"/>
+  <!-- viewport: отключает браузерный масштаб на мобиле, страница заполняет экран -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <!-- theme-color: цвет строки браузера на Android/Chrome — брендовый тёмный -->
+  <meta name="theme-color" content="#121212"/>
+  <title>Argana — Food & Fresh Juice</title>
+
+  <!-- Единственный внешний запрос — два шрифта одним URL. Без этого страница выглядит как документ Word -->
+  <!-- display=swap: текст отображается сразу системным шрифтом, потом меняется — нет "прыжка" при загрузке -->
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* ╔══════════════════════════════════════════╗
+       ║  DESIGN TOKENS — одно место, все цвета  ║
+       ╚══════════════════════════════════════════╝
+       Меняешь здесь — меняется весь сайт.
+       Для другого клиента достаточно переписать 6 строк. */
+    :root {
+      --bg:          #121212;          /* Основной фон — глубокий чёрный */
+      --surface:     #1c1c1c;          /* Поверхность карточек — чуть светлее фона */
+      --surface2:    #242424;          /* Hover-поверхность и разделители */
+      --green:       #2ECC71;          /* Акцент: фреши, кнопки, активные состояния */
+      --green-dim:   rgba(46,204,113,.13); /* Приглушённый зелёный для фонов/badge */
+      --orange:      #E67E22;          /* Акцент: цены, мясные блюда, тепло */
+      --orange-dim:  rgba(230,126,34,.13);
+      --text:        #F5F5F5;          /* Основной текст — не чистый белый, чуть теплее */
+      --muted:       #888;             /* Вторичный текст — описания, метаданные */
+      --border:      rgba(255,255,255,.06); /* Граница карточек — еле видна, структура без шума */
+      --nav-h:       56px;             /* Высота sticky-навигации — используем везде где нужен отступ */
+      --radius:      12px;             /* Радиус скругления — единый стандарт */
+    }
+
+    /* ── RESET ─────────────────────────────────────────────
+       Убираем браузерные дефолты которые мешают предсказуемой вёрстке */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      scroll-behavior: smooth;   /* Нативный плавный скролл — без JS, без библиотек */
+      /* scroll-padding-top: при скролле к якорю браузер добавляет отступ сверху = высота навигации + зазор */
+      scroll-padding-top: calc(var(--nav-h) + 8px);
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif; /* Inter — основной шрифт; system-ui — fallback без загрузки */
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      /* antialiased: сглаживание шрифта — текст выглядит острее на тёмном фоне */
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden; /* Запрещаем горизонтальный скролл — защита от выезжающих элементов */
+    }
+
+    a  { color: inherit; text-decoration: none; }
+    img { display: block; width: 100%; object-fit: cover; }
+    button { cursor: pointer; font-family: inherit; border: none; background: none; }
+
+
+    /* ╔══════════════════════════════════════════╗
+       ║              HERO / HEADER               ║
+       ╚══════════════════════════════════════════╝ */
+
+    .hero {
+      justify-content: center;
+      justify-items: center;
+      position: relative;
+      padding: 44px 20px 32px;
+      text-align: center;
+      /* Gradient: тёмный верх → чуть зеленоватый низ — создаёт ощущение "свежести" без кричащего цвета */
+      background: linear-gradient(175deg, #0a1f12 0%, var(--bg) 60%);
+      overflow: hidden;
+    }
+
+    /* Декоративный круг — signature-элемент. Размытый зелёный blob в фоне.
+       Риск по скиллу: не геометрический орнамент, а органичное световое пятно — для фреш-бара уместнее */
+    .hero::before {
+      content: '';
+      position: absolute;
+      width: 320px; height: 320px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(46,204,113,.18) 0%, transparent 70%);
+      top: -80px; right: -80px; /* Смещаем за правый верхний угол — присутствует, но не доминирует */
+      pointer-events: none;
+    }
+
+    /* Второй blob — зеркально снизу слева, создаёт баланс */
+    .hero::after {
+      content: '';
+      position: absolute;
+      width: 200px; height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(230,126,34,.12) 0%, transparent 70%);
+      bottom: -40px; left: -40px;
+      pointer-events: none;
+    }
+
+    .hero-inner { position: relative; z-index: 1; justify-content: center; align-items: center;} /* Поверх псевдоэлементов */
+
+    /* Eyebrow — маленькая строка над названием, задаёт контекст */
+    .hero-eyebrow {
+      font-size: .7rem;
+      font-weight: 500;
+      letter-spacing: .28em;  /* Широкий трекинг на капсе — классика "премиум" ярлыков */
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 10px;
+    }
+
+    /* Bebas Neue — display-шрифт только для названия. Узкий, плотный, читается одним взглядом */
+    .hero-name {
+      font-family: 'Bebas Neue', Impact, sans-serif;
+      font-size: clamp(3.2rem, 14vw, 5.5rem); /* clamp: минимум/максимум — не съезжает ни на каком экране */
+      line-height: .95;
+      letter-spacing: .04em;
+      color: var(--text);
+    }
+
+    /* "Food & Fresh Juice" — курсивный Inter Light под брутальным Bebas. Контраст веса = интерес */
+    .hero-sub {
+      font-size: clamp(.85rem, 3.5vw, 1.1rem);
+      font-weight: 300;
+      font-style: italic;
+      color: var(--muted);
+      margin-top: 6px;
+      letter-spacing: .06em;
+    }
+
+    /* Адрес + иконка пина */
+    .hero-address {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 0px;
+      font-size: .75rem;
+      color: var(--muted);
+      letter-spacing: .05em;
+    }
+    .hero-address svg { width: 12px; height: 12px; fill: var(--green); flex-shrink: 0; }
+
+    /* Горизонтальная декоративная линия с точкой посередине — типографический разделитель */
+    .hero-divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 18px auto;
+      max-width: 180px;
+    }
+    .hero-divider::before,
+    .hero-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--green), transparent);
+      opacity: .4;
+    }
+    .hero-divider span { /* Центральный ромб */
+      width: 5px; height: 5px;
+      background: var(--green);
+      transform: rotate(45deg);
+      flex-shrink: 0;
+      opacity: .6;
+    }
+
+    /* Орario — часы работы */
+    .hero-hours {
+      font-size: .72rem;
+      color: var(--muted);
+    }
+    .hero-hours strong { color: var(--text); font-weight: 500; }
+
+    /* ── WhatsApp CTA ──────────────────────────────────── */
+    .wa-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 20px;
+      padding: 12px 24px;
+      background: var(--green);
+      color: #fff;
+      font-size: .85rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      border-radius: 100px; /* Pill — стандарт для CTA-кнопок */
+      /* box-shadow с цветом кнопки — кнопка "светится", современный эффект */
+      box-shadow: 0 4px 20px rgba(46,204,113,.35);
+      transition: transform .15s, box-shadow .15s; /* Только трансформ и тень — GPU-анимация, не вызывает reflow */
+    }
+    .wa-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(46,204,113,.45); }
+    .wa-btn:active { transform: translateY(0); }
+    .wa-btn svg { width: 18px; height: 18px; fill: #fff; }
+
+
+    /* ╔══════════════════════════════════════════╗
+       ║         STICKY CATEGORY NAV              ║
+       ╚══════════════════════════════════════════╝ */
+
+    .cat-nav {
+      position: sticky;
+      top: 0;           /* Прилипает к верхнему краю viewport при скролле */
+      z-index: 100;     /* Поверх всего контента */
+      height: var(--nav-h);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 16px;
+      overflow-x: auto;      /* Горизонтальный скролл если категорий много */
+      scrollbar-width: none; /* Firefox — скрываем скроллбар */
+      /* backdrop-filter: матовый blur — контент под навигацией размыт, не скачет */
+      background: rgba(18,18,18,.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px); /* Safari требует префикс */
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+      justify-content: center;
+    }
+    .cat-nav::-webkit-scrollbar { display: none; } /* Chrome/Safari — скрываем скроллбар */
+
+    .nav-btn {
+      flex-shrink: 0;     /* Кнопки не сжимаются — при переполнении появляется горизонтальный скролл */
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 8px;
+      border-radius: 100px;
+      font-size: .78rem;
+      font-weight: 500;
+      color: var(--muted);
+      border: 1px solid transparent; /* Прозрачная граница — резервируем место, не прыгает при активации */
+      transition: all .18s;
+      white-space: nowrap; /* Запрещаем перенос текста внутри кнопки */
+    }
+    .nav-btn .nav-icon { font-size: 1em; } /* Эмодзи-иконка в кнопке */
+
+    .nav-btn:hover { background: var(--surface2); color: var(--text); }
+
+    /* Активная кнопка — разная для каждой категории (зелёная для фрешей, оранжевая для еды) */
+    .nav-btn.active-green {
+      background: var(--green-dim);
+      border-color: rgba(46,204,113,.35);
+      color: var(--green);
+    }
+    .nav-btn.active-orange {
+      background: var(--orange-dim);
+      border-color: rgba(230,126,34,.35);
+      color: var(--orange);
+    }
+
+
+    /* ╔══════════════════════════════════════════╗
+       ║            MENU SECTIONS                 ║
+       ╚══════════════════════════════════════════╝ */
+
+    .menu-wrap { max-width: 680px; margin: 0 auto; padding: 0 14px 80px; }
+
+    .menu-section { margin-top: 36px; }
+
+    /* Заголовок секции: цветная вертикальная полоса + текст — быстро читается при скролле */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* Цветная плашка слева от заголовка — визуальный якорь секции */
+    .section-bar {
+      width: 4px;
+      height: 32px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .bar-green  { background: var(--green); }
+    .bar-orange { background: var(--orange); }
+
+    .section-title {
+      font-family: 'Bebas Neue', Impact, sans-serif; /* Bebas только для крупных заголовков */
+      font-size: clamp(1.4rem, 5vw, 1.9rem);
+      letter-spacing: .06em;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .section-emoji { font-size: 1.4rem; } /* Эмодзи рядом с заголовком — быстрая визуальная идентификация */
+
+
+    /* ╔══════════════════════════════════════════╗
+       ║             DISH GRID                    ║
+       ╚══════════════════════════════════════════╝ */
+
+    /* auto-fill + minmax: автоматически 1 или 2 колонки в зависимости от ширины экрана.
+       На телефоне < ~320px — одна колонка. На большинстве смартфонов — две. */
+    .dish-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+      gap: 10px;
+    }
+
+
+    /* ╔══════════════════════════════════════════╗
+       ║             DISH CARD                    ║
+       ╚══════════════════════════════════════════╝ */
+
+    .card {
+      position: relative; /* Нужен для абсолютного позиционирования badge внутри */
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;   /* Обрезаем img по скруглённым углам карточки */
+      display: flex;
+      flex-direction: column;
+      transition: transform .18s, border-color .18s, box-shadow .18s;
+    }
+
+    /* Hover: лёгкий подъём + свечение границы цветом акцента */
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    }
+    .card.card-green:hover { border-color: rgba(46,204,113,.4); }
+    .card.card-orange:hover { border-color: rgba(230,126,34,.4); }
+
+    /* ── Зона изображения ──────────────────────────────── */
+    .card-img {
+      height: 110px;
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.8rem; /* Emoji-placeholder вместо фото — заменяется на <img> когда есть фотографии */
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    /* Badge цены — наклейка поверх фото, хорошо читается даже на сложном фоне */
+    .price-badge {
+      position: absolute;
+      bottom: 8px; right: 8px;
+      padding: 3px 9px;
+      border-radius: 6px;
+      font-size: .85rem;
+      font-weight: 700;
+      line-height: 1;
+      backdrop-filter: blur(8px); /* Blur под badge — читаемость на любом фоне */
+    }
+    .price-badge.green { background: rgba(46,204,113,.2); color: var(--green); border: 1px solid rgba(46,204,113,.3); }
+    .price-badge.orange { background: rgba(230,126,34,.2); color: var(--orange); border: 1px solid rgba(230,126,34,.3); }
+
+    /* ── Тело карточки ─────────────────────────────────── */
+    .card-body {
+      padding: 10px 11px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex-grow: 1; /* Занимает всё оставшееся пространство — карточки одинаковой высоты в строке */
+    }
+
+    .card-name {
+      font-size: .82rem;
+      font-weight: 600;
+      line-height: 1.25;
+      color: var(--text);
+    }
+
+    .card-desc {
+      font-size: .72rem;
+      color: var(--muted);
+      line-height: 1.4;
+      flex-grow: 1; /* Описание растягивается — цена прижата к низу */
+    }
+
+    /* Вариантная цена (Medio / Grande) — отдельный блок */
+    .price-variants {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+    .contatti {
+    width: 100%;
+    max-width: 560px;
+    background: transparent;
+    border-radius: 20px;
+    padding: 24px 28px;
+    text-align: center;
+    margin-top: 16px;
+    padding: auto;
+    margin: auto;
+    margin-bottom: 30px;
+    }
+    .chi-siamo {
+    font-family: 'Aladin', cursive;
+    font-size: 44px;
+    letter-spacing: 2px;
+    color: #ffffff;
+    margin-bottom: 14px;
+    }
+    .social-icons {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 50px;
+    }
+    .insta {
+    width: 50px;
+    height: 50px;
+}
+
+.google-maps {
+    width: 58px;
+    height: 58px;
+    transform: translateY(-5px);
+}
+
+.whatsapp {
+    width: 60px;
+    height: 60px;
+    transform: translateY(2px);
+    margin-right: -4px;
+}
+    .price-variant {
+      font-size: .72rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .price-variant.green { color: var(--green); background: var(--green-dim); }
+    .price-variant.orange { color: var(--orange); background: var(--orange-dim); }
+
+    /* Одиночная цена внизу карточки */
+    .card-price {
+      font-size: .95rem;
+      font-weight: 700;
+      margin-top: 7px;
+    }
+    .card-price.green  { color: var(--green); }
+    .card-price.orange { color: var(--orange); }
+
+
+    /* ╔══════════════════════════════════════════╗
+       ║              FOOTER                      ║
+       ╚══════════════════════════════════════════╝ */
+
+    .site-footer {
+      text-align: center;
+      padding: 24px 16px 48px; /* Нижний padding 48px — скрывается за system bar на iOS/Android */
+      font-size: .72rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+    .site-footer strong { color: var(--text); }
+    /* Подпись разработчика — тихо, но видно. Каждый клиент вашего клиента видит webtech.bg */
+    .dev-sig { margin-top: 6px; opacity: .45; font-size: .68rem; }
+    .dev-sig a { color: var(--green); }
+
+
+    /* ╔══════════════════════════════════════════╗
+       ║           FADE-IN АНИМАЦИЯ               ║
+       ╚══════════════════════════════════════════╝
+       Только у секций при скролле — не раздражает, добавляет живости */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity .4s ease, transform .4s ease;
+    }
+    .fade-in.visible {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* ── АДАПТИВ ─────────────────────────────────────────
+       На очень узких экранах (<320px) одна колонка */
+    @media (max-width: 319px) {
+      .dish-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     HERO — первое что видит гость после сканирования QR
+     Цель: имя + тип заведения + адрес + WhatsApp за 2 секунды
+════════════════════════════════════════════════════════ -->
+<header class="hero">
+  <div class="hero-inner">
+
+    <div class="hero-eyebrow">Bergamo · Dal <span style="color: white;">2020</span> </div>
+    <img src="img/argana-logo.png" style="display: block; margin: 0 auto; width: 100%; max-width: 650px; height: 380px; margin-top: -80px; margin-bottom: -90px;">
+    <div class="hero-address">
+      <!-- Иконка пина — inline SVG, без внешнего файла, 0 дополнительных запросов -->
+      <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+      Via Borgo Palazzo, Bergamo
+    </div>
+
+    <!-- Декоративный разделитель с ромбом посередине -->
+    <div class="hero-divider"><span></span></div>
+
+    <div class="hero-hours">
+      Aperto tutti i giorni &nbsp;·&nbsp; <strong>08:30 – 23:00</strong>
+    </div>
+
+    <!-- Главный CTA: WhatsApp — самый быстрый способ связи для итальянского SMB -->
+    <a href="https://wa.me/393246869946" target="_blank" rel="noopener" class="wa-btn">
+      <!-- SVG WhatsApp логотип — inline, без внешних зависимостей -->
+      <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.132.558 4.133 1.528 5.868L0 24l6.288-1.528A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.007-1.373l-.36-.214-3.732.907.922-3.643-.235-.374A9.817 9.817 0 012.182 12C2.182 6.58 6.58 2.182 12 2.182c5.419 0 9.818 4.398 9.818 9.818 0 5.419-4.399 9.818-9.818 9.818z"/></svg>
+      Scrivici su WhatsApp
+    </a>
+
+  </div>
+</header>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     STICKY NAV — прилипает к верху при скролле.
+     JS ниже добавляет/убирает класс active при клике.
+════════════════════════════════════════════════════════ -->
+<nav class="cat-nav" id="catNav">
+  <!-- data-target: id секции куда скроллить. data-color: какой active-класс применять -->
+  <button class="nav-btn" data-target="specialita" data-color="orange">
+    <span class="nav-icon">🥩</span> Specialità Araba
+  </button>
+  <button class="nav-btn" data-target="tacos" data-color="orange">
+    <span class="nav-icon">🌮</span> Tacos &amp; Snack
+  </button>
+  <button class="nav-btn" data-target="frullati" data-color="green">
+    <span class="nav-icon">🥤</span> Frullati e Bevande
+  </button>
+</nav>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     MENU CONTENT — три секции
+════════════════════════════════════════════════════════ -->
+<main class="menu-wrap">
+
+
+  <!-- ── СЕКЦИЯ 1: Specialità Araba ───────────────────── -->
+  <section class="menu-section fade-in" id="specialita">
+
+    <div class="section-header">
+      <div class="section-bar bar-orange"></div> <!-- Оранжевая полоса = мясная секция -->
+      <div>
+        <div class="section-emoji">🥩</div>
+        <h2 class="section-title">Specialità Araba</h2>
+      </div>
+    </div>
+
+    <div class="dish-grid">
+
+      <!-- Карточка: Cotoletta di Pollo -->
+      <div class="card card-orange">
+        <div class="card-img">
+          <img src="img/cotoletta-di-pollo.png" style="width: 130px;">
+          <!-- price-badge: цена поверх фото — видна сразу, до прочтения названия -->
+          <span class="price-badge orange">€5,50</span>
+        </div>
+        <div class="card-body">
+          <div class="card-name">Cotoletta di Pollo</div>
+          <div class="card-desc">Con patatine fritte — ricetta tradizionale marocchina</div>
+          <div class="card-price orange">€ 5,50</div>
+        </div>
+      </div>
+
+      <!-- Карточка: Nuggets di Pollo -->
+      <div class="card card-orange">
+        <div class="card-img">
+          <img src="img/nuggets-di-pollo.png">
+          <span class="price-badge orange">€5,50</span>
+        </div>
+        <div class="card-body">
+          <div class="card-name">Nuggets di Pollo</div>
+          <div class="card-desc">Con patatine fritte — croccanti fuori, teneri dentro</div>
+          <div class="card-price orange">€ 5,50</div>
+        </div>
+      </div>
+
+      <!-- Карточка: Msemen / Harcha — span 2 колонки на широком экране не нужен, оставляем обычным -->
+      <div class="card card-orange">
+        <div class="card-img">
+          <img src="img/harcha.png">
+          <span class="price-badge orange">€1,50</span>
+        </div>
+        <div class="card-body">
+          <div class="card-name">Msemen / Harcha</div>
+          <div class="card-desc">Pane berbero tradizionale, cotto sul momento</div>
+          <div class="card-price orange">€ 1,50 <span style="font-size:.7rem;font-weight:400;color:var(--muted)">/ cad</span></div>
+        </div>
+      </div>
+
+      <!-- Карточка: Pastilla di Pollo -->
+      <div class="card card-orange">
+        <div class="card-img">
+          <img src="img/pastilla-di-pollo.png">
+          <span class="price-badge orange">€6,00</span>
+        </div>
+        <div class="card-body">
+          <div class="card-name">Pastilla di Pollo</div>
+          <div class="card-desc">Pasta fillo, pollo speziato, mandorle e cannella</div>
+          <div class="card-price orange">€ 6,00</div>
+        </div>
+      </div>
+
+    </div><!-- /dish-grid -->
+  </section>
+
+
+  <!-- ── СЕКЦИЯ 2: Tacos & Snack ───────────────────────── -->
+  <section class="menu-section fade-in" id="tacos">
+
+    <div class="section-header">
+      <div class="section-bar bar-orange"></div>
+      <div>
+        <div class="section-emoji">🌮</div>
+        <h2 class="section-title">Tacos &amp; Snack</h2>
+      </div>
+    </div>
+
+    <div class="dish-grid">
+
+      <div class="card card-orange">
+        <div class="card-img">
+          <img src="img/tacos.png" style="width: 150px;">
+          <span class="price-badge orange">€6,00</span>
+        </div>
+        <div class="card-body">
+          <div class="card-name">Tacos Francese</div>
+          <div class="card-desc">Carne, formaggio fuso, patatine e salse — formato maxi</div>
+          <div class="card-price orange">€ 6,00</div>
+        </div>
+      </div>
+
+      <div class="card card-orange">
+        <div class="card-img">
+          <img src="img/patatine-fritte.png" width="auto" height="110px">
+          <span class="price-badge orange">€1,50</span>
+        </div>
+        <div class="card-body">
+          <div class="card-name">Patatine Fritte</div>
+          <div class="card-desc">Croccanti, servite calde con salsa a scelta</div>
+          <div class="card-price orange">€ 1,50</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ── СЕКЦИЯ 3: Frullati e Bevande ─────────────────── -->
+  <section class="menu-section fade-in" id="frullati">
+
+    <div class="section-header">
+      <div class="section-bar bar-green"></div> <!-- Зелёная полоса = фреши -->
+      <div>
+        <div class="section-emoji">🥤</div>
+        <h2 class="section-title">Frullati e Bevande</h2>
+      </div>
+    </div>
+
+    <div class="dish-grid">
+
+      <!-- Авокадо: две цены (Medio / Grande) — используем price-variants -->
+      <div class="card card-green">
+        <div class="card-img">
+          <img src="img/frulatto-di-avocado.png" style="width: 110px;">
+        </div>
+        <div class="card-body">
+          <div class="card-name">Frullato di Avocado</div>
+          <div class="card-desc">Avocado fresco frullato con latte e miele — cremoso e nutriente</div>
+          <!-- Два варианта цены: Medio и Grande -->
+          <div class="price-variants">
+            <span class="price-variant green">Medio €3,00</span>
+            <span class="price-variant green">Grande €4,00</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card card-green">
+        <div class="card-img">
+          <img src="img/spremuta-arancia.png" style="width: 110px;">
+          <span class="price-badge green">€2,50</span>
+        </div>
+        <div class="card-body">
+          <div class="card-name">Spremuta d'Arancia</div>
+          <div class="card-desc">Arance fresche spremute al momento — senza zuccheri aggiunti</div>
+          <div class="card-price green">€ 2,50</div>
+        </div>
+      </div>
+
+      <div class="card card-green">
+        <div class="card-img">
+          <img src="img/frulatto-argana.png" style="width: 200px;">
+          <span class="price-badge green">€4,00</span>
+        </div>
+        <div class="card-body">
+          <div class="card-name">Frullato Argana</div>
+          <div class="card-desc">Mix di frutta fresca di stagione — la firma della casa</div>
+          <div class="card-price green">€ 4,00</div>
+        </div>
+      </div>
+
+      <div class="card card-green">
+        <div class="card-img">
+          <img src="img/cocktail-frutta.png" style="width: 150px;">
+          <span class="price-badge green">€4,00</span>
+        </div>
+        <div class="card-body">
+          <div class="card-name">Cocktail Frutta</div>
+          <div class="card-desc">Con frutta di stagione — fresco, colorato, vitaminico</div>
+          <div class="card-price green">€ 4,00</div>
+        </div>
+      </div>
+
+      <div class="card card-green">
+        <div class="card-img">
+          <img src="img/te-alla-menta.png" style="transform: translateY(2px); width: 70%;">
+          <span class="price-badge green">€1,00</span>
+        </div>
+        <div class="card-body">
+          <div class="card-name">Tè alla Menta</div>
+          <div class="card-desc">Tè verde marocchino con menta fresca — tradizione autentica</div>
+          <div class="card-price green">€ 1,00</div>
+        </div>
+      </div>
+
+      <div class="card card-green">
+        <div class="card-img">
+          <img src="img/zazsa-avocado.png" style="width: 67px;">
+          <span class="price-badge green">€5,00</span>
+        </div>
+        <div class="card-body">
+          <div class="card-name">Zazsa Avocado</div>
+          <div class="card-desc">Avocado e banana con frutta secca — proteico e saziante</div>
+          <div class="card-price green">€ 5,00</div>
+        </div>
+      </div>
+
+    </div><!-- /dish-grid -->
+  </section>
+
+
+</main><!-- /menu-wrap -->
+
+<div class="contatti">
+        <h3 class="chi-siamo">Seguici su:</h3>
+        <div class="social-icons">
+            <a href="https://wa.me/393246869946" target="_blank">
+                <img class="whatsapp" src="img/whatsapp.png" alt="WhatsApp">
+            </a>
+            <a href="https://www.google.com/maps/place/Argana+food+%26+fresh+juice/@45.6945908,9.6882622,21z/data=!4m6!3m5!1s0x478151d098e4cf29:0xfb7ec0f826c307da!8m2!3d45.6945908!4d9.6882622!16s%2Fg%2F11vqdxkxpb?entry=ttu&g_ep=EgoyMDI2MDYwMy4xIKXMDSoASAFQAw%3D%3D" target="_blank">
+                <img class="google-maps" src="img/google-maps.png" alt="Google Maps">
+            </a>
+        </div>
+    </div>
+
+
+
+<!-- ═══════════════════════════════════════════════════════
+     FOOTER
+════════════════════════════════════════════════════════ -->
+<footer class="site-footer">
+  <div><strong>Argana</strong> · Food &amp; Fresh Juice · Via Borgo Palazzo, 87f, 24125 Bergamo</div>
+  <div>Aperto tutti i giorni · 08:30 – 23:00</div>
+  <div class="dev-sig">menu digitale by <a href="https://www.instagram.com/webtech_bg" target="_blank">webtech_bg</a></div>
+</footer>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     JAVASCRIPT — минимальный. Два блока:
+     1. Подсветка активной кнопки навигации при клике
+     2. Fade-in секций при скролле через IntersectionObserver
+════════════════════════════════════════════════════════ -->
+<script>
+  // ── 1. Навигация: клик → скролл + активная кнопка ──────
+  const navBtns = document.querySelectorAll('.nav-btn'); // все кнопки навигации
+
+  navBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+
+      // Снимаем active-классы со всех кнопок перед применением нового
+      navBtns.forEach(function(b) {
+        b.classList.remove('active-green', 'active-orange'); // убираем оба возможных класса
+      });
+
+      // Применяем нужный active-класс в зависимости от data-color атрибута кнопки
+      const color = btn.dataset.color; // 'green' или 'orange'
+      btn.classList.add('active-' + color);
+
+      // Скроллим к секции: находим элемент по id из data-target атрибута
+      const target = document.getElementById(btn.dataset.target);
+      if (target) target.scrollIntoView({ behavior: 'smooth' }); // нативный плавный скролл
+    });
+  });
+
+
+  // ── 2. Fade-in секций при скролле ──────────────────────
+  // IntersectionObserver — браузер сам следит за видимостью, не нагружаем main thread
+  const observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {                  // секция вошла в viewport
+        entry.target.classList.add('visible');     // добавляем visible → CSS делает opacity:1 + translateY(0)
+        observer.unobserve(entry.target);          // unobserve: анимация только один раз, не повторяется при скролле вверх
+      }
+    });
+  }, { threshold: 0.08 }); // 8% секции в viewport = начинаем анимацию — достаточно раннее срабатывание
+
+  // Подписываем все секции с классом fade-in на наблюдение
+  document.querySelectorAll('.fade-in').forEach(function(el) {
+    observer.observe(el);
+  });
+</script>
+
+</body>
+</html>
